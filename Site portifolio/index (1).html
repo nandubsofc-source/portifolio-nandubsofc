@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#101114">
+<title>Portfólio de Fandublagens</title>
+<style>
+  :root { --accent:#f700ff; --panel:rgba(12,13,16,.78); --muted:#c6c6c6; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; width:100%; height:100%; min-height:100%; background:#101114; color:#fff; font-family:Arial,Helvetica,sans-serif; }
+  body { overflow:hidden; }
+  button { font:inherit; }
+  .stage { position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:
+    radial-gradient(ellipse at 70% 35%, #35383e 0%, #1a1c20 42%, #0c0d10 100%); }
+  .video-layer { position:absolute; inset:0; width:100%; height:100%; display:none; background:#000; }
+  .video-layer.active { display:block; }
+  #characterVideo { position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:cover; background:#050505; }
+  .shade { position:absolute; inset:0; pointer-events:none; background:linear-gradient(90deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.30) 38%,rgba(0,0,0,.05) 72%),linear-gradient(0deg,rgba(0,0,0,.64),transparent 38%,rgba(0,0,0,.15)); transition:opacity .7s ease; }
+  .brand { position:absolute; top:28px; left:112px; z-index:5; font-size:12px; letter-spacing:.28em; color:#e6e6e6; text-transform:uppercase; }
+  .brand strong { display:block; margin-top:7px; font-size:clamp(23px,3vw,42px); letter-spacing:.06em; color:white; }
+  .sidebar { position:absolute; z-index:10; left:22px; top:42%; transform:translateY(-50%); display:flex; flex-direction:column; gap:22px; transition:opacity .5s,transform .5s; }
+  .character-button { width:58px; height:58px; border-radius:50%; border:1px solid rgba(255,255,255,.25); background:rgba(25,27,31,.88); color:#fff; cursor:pointer; display:grid; place-items:center; position:relative; transition:transform .2s,border-color .2s,background .2s,box-shadow .2s; box-shadow:0 4px 18px #0006; }
+  .character-button:hover,.character-button:focus-visible,.character-button.selected { transform:scale(1.09); border-color:var(--accent); background:#34302a; box-shadow:0 0 0 2px #e3b34f25,0 0 24px #e3b34f30; outline:none; }
+  
+  .avatar { width:100%; height:100%; display:grid; place-items:center; font-weight:800; font-size:14px; letter-spacing:-.04em; overflow:hidden; border-radius:50%; }
+  .avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; }
+  .character-art { position:absolute; z-index:2; right:3%; bottom:0; height:min(88vh,900px); width:min(52vw,760px); object-fit:contain; object-position:bottom right; pointer-events:none; filter:drop-shadow(0 12px 35px #0009); transition:opacity .3s; }
+  .stage.playing .character-art { opacity:0; }
+  @media(max-width:650px) { .character-art { right:-12%; height:58vh; width:75vw; opacity:.75; } }
+
+  .character-button::after { content:attr(data-name); position:absolute; left:70px; white-space:nowrap; background:rgba(0,0,0,.78); border:1px solid #ffffff24; padding:8px 11px; border-radius:5px; font-size:12px; opacity:0; transform:translateX(-5px); pointer-events:none; transition:.2s; }
+  .character-button:hover::after,.character-button:focus-visible::after { opacity:1; transform:translateX(0); }
+  .intro { position:absolute; z-index:4; left:112px; bottom:13%; max-width:min(590px,65vw); transition:opacity .55s,transform .55s; }
+  .eyebrow { color:var(--accent); font-size:12px; font-weight:bold; letter-spacing:.24em; text-transform:uppercase; margin-bottom:13px; }
+  h1 { font-size:clamp(36px,6vw,76px); line-height:.98; margin:0 0 14px; text-transform:uppercase; text-shadow:0 3px 25px #000; }
+  .description { max-width:510px; color:#dedede; font-size:clamp(14px,1.4vw,17px); line-height:1.6; margin:0 0 22px; text-shadow:0 2px 8px #000; }
+  .actions { display:flex; gap:11px; flex-wrap:wrap; }
+  .action { border:0; border-radius:4px; padding:12px 19px; font-weight:700; cursor:pointer; transition:transform .2s,background .2s; }
+  .action:hover { transform:translateY(-2px); }
+  .primary { background:#f1f1f1; color:#111; }
+  .secondary { background:rgba(90,90,90,.68); color:#fff; border:1px solid #ffffff22; }
+  .hint { position:absolute; z-index:4; right:26px; bottom:24px; color:#ddd; font-size:12px; letter-spacing:.04em; transition:opacity .5s; }
+  .player-tools { position:absolute; z-index:12; top:24px; right:24px; display:flex; gap:9px; transition:opacity .5s; }
+  .tool { border:1px solid #ffffff35; color:white; background:rgba(0,0,0,.58); border-radius:99px; padding:10px 14px; cursor:pointer; backdrop-filter:blur(8px); }
+  .tool:hover { background:rgba(70,70,70,.85); }
+  .toast { position:absolute; z-index:20; left:50%; top:18%; transform:translate(-50%,-8px); background:rgba(0,0,0,.82); border:1px solid #ffffff22; padding:11px 16px; border-radius:7px; color:#eee; font-size:13px; opacity:0; pointer-events:none; transition:.25s; text-align:center; max-width:90vw; }
+  .toast.show { opacity:1; transform:translate(-50%,0); }
+  .stage.playing .brand,.stage.playing .sidebar,.stage.playing .intro,.stage.playing .hint,.stage.playing .player-tools { opacity:0; pointer-events:none; }
+  .stage.playing .shade { opacity:0; }
+  .stage.playing.ui-visible .brand,.stage.playing.ui-visible .sidebar,.stage.playing.ui-visible .intro,.stage.playing.ui-visible .hint,.stage.playing.ui-visible .player-tools { opacity:1; pointer-events:auto; }
+  .stage.playing.ui-visible .shade { opacity:1; }
+  .stage.playing .intro { transform:translateY(8px); }
+  .stage.playing.ui-visible .intro { transform:translateY(0); }
+  @media(max-width:650px) {
+    .brand { left:92px; top:19px; font-size:10px; }
+    .brand strong { font-size:23px; }
+    .sidebar { left:12px; top:42%; gap:17px; }
+    .character-button { width:46px; height:46px; }
+    .character-button::after { left:56px; }
+    .intro { left:82px; bottom:12%; max-width:calc(100vw - 105px); }
+    h1 { font-size:clamp(30px,9vw,48px); }
+    .description { font-size:13px; line-height:1.45; }
+    .action { padding:10px 12px; font-size:13px; }
+    .player-tools { top:12px; right:10px; }
+    .tool { padding:8px 10px; font-size:12px; }
+    .hint { right:12px; bottom:10px; font-size:10px; }
+  }
+  @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; } }
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+  <div class="video-layer" id="videoLayer">
+    <video id="characterVideo" playsinline preload="metadata"></video>
+  </div>
+  <!-- PNG transparente grande, exibido antes de iniciar a reprodução -->
+  <img class="character-art" id="characterArt" src="imagens/personagens/scout.png" alt="Imagem de Scout">
+  <div class="shade"></div>
+
+  <div class="brand">Portfólio de voz<strong>Fandublagens</strong></div>
+
+  <nav class="sidebar" id="sidebar" aria-label="Escolher personagem">
+    <button class="character-button" data-id="scout" data-name="Scout" aria-label="Selecionar Scout"><span class="avatar"><img src="imagens/scout.png" data-fallback="SC" alt=""></span></button>
+    <button class="character-button" data-id="freddy" data-name="Funtime Freddy" aria-label="Selecionar Funtime Freddy"><span class="avatar"><img src="imagens/icones/funtime-freddy.png" data-fallback="FF" alt=""></span></button>
+    <button class="character-button" data-id="taisake" data-name="Taisake" aria-label="Selecionar Taisake"><span class="avatar"><img src="imagens/icones/taisake.png" data-fallback="TA" alt=""></span></button>
+    <button class="character-button" data-id="isaac" data-name="Isaac" aria-label="Selecionar Isaac"><span class="avatar"><img src="imagens/icones/isaac.png" data-fallback="IS" alt=""></span></button>
+    <button class="character-button" data-id="spamton" data-name="Spamton" aria-label="Selecionar Spamton"><span class="avatar"><img src="imagens/icones/spamton.png" data-fallback="SP" alt=""></span></button>
+    <button class="character-button" data-id="syndrome" data-name="Syndrome" aria-label="Selecionar Syndrome"><span class="avatar"><img src="imagens/icones/syndrome.png" data-fallback="SY" alt=""></span></button>
+  </nav>
+
+  <section class="intro" id="intro">
+    <div class="eyebrow" id="eyebrow">Portfólio de fandublagens</div>
+    <h1 id="characterName">Escolha um personagem</h1>
+    <p class="description" id="description">Passe o mouse pelos ícones para conhecer as personagens. Clique para assistir às fandublagens.</p>
+    <div class="actions">
+      <button class="action primary" id="watchButton">▶ Assistir prévia</button>
+      <button class="action secondary" id="aboutButton">＋ Sobre o personagem</button>
+    </div>
+  </section>
+
+  <div class="hint" id="hint">PASSE O MOUSE PARA EXPLORAR · CLIQUE PARA ASSISTIR</div>
+
+  <div class="player-tools" id="playerTools">
+    <button class="tool" id="soundButton" aria-label="Ativar som">🔇 Som desligado</button>
+    <button class="tool" id="backButton">✕ Menu</button>
+  </div>
+  <div class="toast" id="toast"></div>
+</main>
+
+<script>
+/* Configure os caminhos dos vídeos, imagens e descrições abaixo. */
+const characters = {
+  scout: {
+    icon: "imagens/icones/scout.png", art: "imagens/personagens/scout.png",
+    name: "Scout", universe: "Team Fortress 2",
+    description: "Rápido, provocador e sempre pronto para entrar em ação. Esta área apresenta a sua interpretação vocal do Scout.",
+    video: "videos/scout.mp4",
+  },
+  freddy: {
+    icon: "imagens/icones/funtime-freddy.png", art: "imagens/personagens/funtime-freddy.png",
+    name: "Funtime Freddy", universe: "Five Nights at Freddy’s",
+    description: "Uma voz teatral e imprevisível para o animatrônico Funtime Freddy.",
+    video: "videos/funtime-freddy.mp4",
+  },
+  taisake: {
+    icon: "imagens/icones/taisake.png", art: "imagens/personagens/taisake.png",
+    name: "Taisake", universe: "Personagem original",
+    description: "Uma fandublagem de Taisake, personagem original criada por sua amiga.",
+    video: "videos/taisake.mp4",
+  },
+  isaac: {
+    icon: "imagens/icones/isaac.png", art: "imagens/personagens/isaac.png",
+    name: "Isaac", universe: "Detetives de Duskmoon",
+    description: "Confira a sua interpretação vocal de Isaac, da série Detetives de Duskmoon.",
+    video: "videos/isaac.mp4",
+  },
+  spamton: {
+    icon: "imagens/icones/spamton.png", art: "imagens/personagens/spamton.png",
+    name: "Spamton", universe: "Deltarune",
+    description: "Uma interpretação vocal enérgica para o vendedor mais caótico de Deltarune.",
+    video: "videos/spamton.mp4",
+  },
+  syndrome: {
+    icon: "imagens/icones/syndrome.png", art: "imagens/personagens/syndrome.png",
+    name: "Syndrome", universe: "Os Incríveis",
+    description: "Uma voz para o antagonista de Os Incríveis. Assista à sua interpretação aqui.",
+    video: "videos/syndrome.mp4",
+  }
+};
+
+const order = ["scout", "freddy", "taisake", "isaac", "spamton", "syndrome"];
+const stage = document.getElementById("stage");
+const videoLayer = document.getElementById("videoLayer");
+const characterArt = document.getElementById("characterArt");
+const video = document.getElementById("characterVideo");
+const nameEl = document.getElementById("characterName");
+const descriptionEl = document.getElementById("description");
+const eyebrowEl = document.getElementById("eyebrow");
+const toastEl = document.getElementById("toast");
+const soundButton = document.getElementById("soundButton");
+const buttons = [...document.querySelectorAll(".character-button")];
+
+let currentId = "scout";
+let isPlaying = false;
+let idleTimer = null;
+let nextTimer = null;
+let toastTimer = null;
+let selectedByUser = false;
+
+function showToast(message) {
+  toastEl.textContent = message;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 3200);
+}
+
+function updateCharacter(id) {
+  const character = characters[id];
+  if (!character) return;
+  currentId = id;
+  nameEl.textContent = character.name;
+  descriptionEl.textContent = character.description;
+  eyebrowEl.textContent = character.universe + " · Fandublagem";
+  characterArt.src = character.art;
+  characterArt.alt = "Imagem de " + character.name;
+  buttons.forEach(button => {
+    const selected = button.dataset.id === id;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-pressed", selected ? "true" : "false");
+  });
+}
+
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  if (!isPlaying) return;
+  stage.classList.add("ui-visible");
+  idleTimer = setTimeout(() => {
+    if (isPlaying) stage.classList.remove("ui-visible");
+  }, 2500);
+}
+
+async function playCharacter(id, isAutomatic = false) {
+  clearTimeout(nextTimer);
+  clearTimeout(idleTimer);
+  // Aproveita o clique do usuário para colocar o portfólio em tela cheia no navegador.
+  if (!isAutomatic && !document.fullscreenElement && stage.requestFullscreen) {
+    try { await stage.requestFullscreen(); } catch (error) { /* Se o navegador bloquear, ocupa a janela normalmente. */ }
+  }
+  updateCharacter(id);
+  selectedByUser = true;
+  const character = characters[id];
+  video.pause();
+  video.src = character.video;
+  video.load();
+  video.muted = true; // começa sempre silenciado, conforme escolhido
+  soundButton.textContent = "🔇 Som desligado";
+  videoLayer.classList.add("active");
+  stage.classList.add("playing", "ui-visible");
+  isPlaying = true;
+
+  try {
+    await video.play();
+    resetIdleTimer();
+  } catch (error) {
+    isPlaying = false;
+    stage.classList.remove("playing");
+    videoLayer.classList.remove("active");
+    showToast("Não consegui abrir " + character.video + ". Confira se o MP4 está na pasta videos/.");
+  }
+}
+
+function returnToMenu() {
+  clearTimeout(idleTimer);
+  clearTimeout(nextTimer);
+  video.pause();
+  isPlaying = false;
+  stage.classList.remove("playing", "ui-visible");
+  videoLayer.classList.remove("active");
+}
+
+buttons.forEach(button => {
+  button.addEventListener("mouseenter", () => updateCharacter(button.dataset.id));
+  button.addEventListener("focus", () => updateCharacter(button.dataset.id));
+  button.addEventListener("click", () => playCharacter(button.dataset.id));
+});
+
+document.getElementById("watchButton").addEventListener("click", () => playCharacter(currentId));
+document.getElementById("aboutButton").addEventListener("click", () => {
+  const character = characters[currentId];
+  showToast(character.name + " — " + character.universe + ". " + character.description);
+});
+document.getElementById("backButton").addEventListener("click", returnToMenu);
+
+soundButton.addEventListener("click", async () => {
+  video.muted = !video.muted;
+  soundButton.textContent = video.muted ? "🔇 Som desligado" : "🔊 Som ligado";
+  soundButton.setAttribute("aria-label", video.muted ? "Ativar som" : "Desativar som");
+  if (!video.muted) {
+    try { await video.play(); } catch (_) {}
+  }
+});
+
+video.addEventListener("ended", () => {
+  isPlaying = false;
+  clearTimeout(idleTimer);
+  stage.classList.remove("playing");
+  stage.classList.add("ui-visible");
+  showToast("Próxima fandublagem em instantes…");
+  const index = order.indexOf(currentId);
+  const nextId = order[(index + 1) % order.length];
+  nextTimer = setTimeout(() => playCharacter(nextId, true), 2800);
+});
+video.addEventListener("error", () => {
+  if (videoLayer.classList.contains("active")) {
+    showToast("Vídeo não encontrado: " + (characters[currentId]?.video || "verifique a pasta videos/"));
+  }
+});
+
+stage.addEventListener("mousemove", resetIdleTimer);
+stage.addEventListener("touchstart", () => {
+  if (isPlaying) resetIdleTimer();
+}, {passive:true});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && isPlaying) returnToMenu();
+  if (event.key === " " && isPlaying && event.target.tagName !== "BUTTON") {
+    event.preventDefault();
+    if (video.paused) video.play(); else video.pause();
+  }
+});
+
+updateCharacter("scout");
+</script>
+</body>
+</html>
